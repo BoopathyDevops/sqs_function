@@ -14,12 +14,12 @@ Resources:
   RequestQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: houdini-request-queue
+      QueueName: houdini-request-queues
 
   ResponseQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: houdini-response-queue
+      QueueName: houdini-response-queues
 
   # IAM Role for Lambdas
   LambdaExecutionRole:
