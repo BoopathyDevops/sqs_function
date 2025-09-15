@@ -1,23 +1,16 @@
-# infrastructure/template.yaml
 AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
 Description: Houdini Serverless stack - API Lambda + Worker Lambda + SQS + HTTP API
 
 Parameters:
-  ArtifactBucket:
-    Type: String
-    Description: S3 bucket where lambda artifacts are uploaded by CI
-  ApiLambdaS3Key:
-    Type: String
-    Description: S3 key for API Lambda zip
-  WorkerLambdaS3Key:
-    Type: String
-    Description: S3 key for Worker Lambda zip
   LambdaRuntime:
     Type: String
     Default: python3.9
+    Description: Python runtime for Lambdas
 
 Resources:
 
+  # SQS Queues
   RequestQueue:
     Type: AWS::SQS::Queue
     Properties:
@@ -28,6 +21,7 @@ Resources:
     Properties:
       QueueName: houdini-response-queue
 
+  # IAM Role for Lambdas
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -58,93 +52,74 @@ Resources:
                   - !GetAtt RequestQueue.Arn
                   - !GetAtt ResponseQueue.Arn
 
+  # API Lambda
   ApiLambdaFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: houdini-api-lambda
       Runtime: !Ref LambdaRuntime
-      Handler: src.api.app.handler
+      Handler: app.handler
+      CodeUri: src/api/
       Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: !Ref ApiLambdaS3Key
       MemorySize: 512
       Timeout: 30
       Environment:
         Variables:
           AWS_REGION: !Ref "AWS::Region"
-          REQUEST_Q_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/${RequestQueue}
-          RESPONSE_Q_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/${ResponseQueue}
+          REQUEST_Q_URL: !GetAtt RequestQueue.QueueUrl
+          RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
         - "--requirement ../../requirements.txt"
+
+  # Worker Lambda
   WorkerLambdaFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Properties:
       FunctionName: houdini-worker-lambda
       Runtime: !Ref LambdaRuntime
-      Handler: src.worker.handler.lambda_handler
+      Handler: handler.lambda_handler
+      CodeUri: src/worker/
       Role: !GetAtt LambdaExecutionRole.Arn
-      Code:
-        S3Bucket: !Ref ArtifactBucket
-        S3Key: !Ref WorkerLambdaS3Key
       MemorySize: 512
       Timeout: 30
       Environment:
         Variables:
           AWS_REGION: !Ref "AWS::Region"
-          RESPONSE_Q_URL: !Sub https://sqs.${AWS::Region}.amazonaws.com/${AWS::AccountId}/${ResponseQueue}
+          RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
+      Events:
+        WorkerSQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RequestQueue.Arn
+            BatchSize: 1
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
         - "--requirement ../../requirements.txt"
 
-  # Create an event source mapping so Worker Lambda is triggered by RequestQueue
-  WorkerSQSEventSourceMapping:
-    Type: AWS::Lambda::EventSourceMapping
-    Properties:
-      EventSourceArn: !GetAtt RequestQueue.Arn
-      FunctionName: !GetAtt WorkerLambdaFunction.Arn
-      BatchSize: 1
-      Enabled: True
-
-  # HTTP API (API Gateway v2) and integration with API Lambda
+  # HTTP API
   HoudiniHttpApi:
-    Type: AWS::ApiGatewayV2::Api
+    Type: AWS::Serverless::HttpApi
     Properties:
       Name: houdini-http-api
-      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowMethods: ["GET", "POST", "OPTIONS"]
+        AllowHeaders: ["*"]
+        AllowOrigins: ["*"]
 
-  ApiLambdaPermission:
-    Type: AWS::Lambda::Permission
+  # Connect API Lambda to HTTP API
+  ApiLambdaIntegration:
+    Type: AWS::Serverless::Api
     Properties:
-      FunctionName: !GetAtt ApiLambdaFunction.Arn
-      Action: lambda:InvokeFunction
-      Principal: apigateway.amazonaws.com
-      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:*/*/*
-
-  ApiIntegration:
-    Type: AWS::ApiGatewayV2::Integration
-    Properties:
-      ApiId: !Ref HoudiniHttpApi
-      IntegrationType: AWS_PROXY
-      IntegrationUri: !GetAtt ApiLambdaFunction.Arn
-      PayloadFormatVersion: "2.0"
-
-  ApiRouteProxy:
-    Type: AWS::ApiGatewayV2::Route
-    Properties:
-      ApiId: !Ref HoudiniHttpApi
-      RouteKey: "ANY /{proxy+}"
-      Target: !Sub integrations/${ApiIntegration}
-
-  ApiStage:
-    Type: AWS::ApiGatewayV2::Stage
-    Properties:
-      ApiId: !Ref HoudiniHttpApi
+      Name: houdini-http-api
       StageName: prod
-      AutoDeploy: True
+      CorsConfiguration:
+        AllowMethods: ["GET", "POST", "OPTIONS"]
+        AllowHeaders: ["*"]
+        AllowOrigins: ["*"]
+      Target: !GetAtt ApiLambdaFunction.Arn
 
 Outputs:
   ApiEndpoint:
