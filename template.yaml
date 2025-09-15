@@ -68,10 +68,12 @@ Resources:
           AWS_REGION: !Ref "AWS::Region"
           REQUEST_Q_URL: !GetAtt RequestQueue.QueueUrl
           RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
-    Metadata:
-      BuildMethod: python3.9
-      BuildArgs:
-        - "--requirement ../../requirements.txt"
+      Events:
+        HttpApi:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
 
   # Worker Lambda
   WorkerLambdaFunction:
@@ -94,34 +96,8 @@ Resources:
           Properties:
             Queue: !GetAtt RequestQueue.Arn
             BatchSize: 1
-    Metadata:
-      BuildMethod: python3.9
-      BuildArgs:
-        - "--requirement ../../requirements.txt"
-
-  # HTTP API
-  HoudiniHttpApi:
-    Type: AWS::Serverless::HttpApi
-    Properties:
-      Name: houdini-http-api
-      CorsConfiguration:
-        AllowMethods: ["GET", "POST", "OPTIONS"]
-        AllowHeaders: ["*"]
-        AllowOrigins: ["*"]
-
-  # Connect API Lambda to HTTP API
-  ApiLambdaIntegration:
-    Type: AWS::Serverless::Api
-    Properties:
-      Name: houdini-http-api
-      StageName: prod
-      CorsConfiguration:
-        AllowMethods: ["GET", "POST", "OPTIONS"]
-        AllowHeaders: ["*"]
-        AllowOrigins: ["*"]
-      Target: !GetAtt ApiLambdaFunction.Arn
 
 Outputs:
   ApiEndpoint:
     Description: "HTTP API endpoint"
-    Value: !Sub "https://${HoudiniHttpApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+    Value: !Sub "https://${ApiLambdaFunction}.execute-api.${AWS::Region}.amazonaws.com/"
