@@ -35,4 +35,4 @@ jobs:
             --region us-east-2 \
             --no-fail-on-empty-changeset \
             --s3-bucket ${{ secrets.S3_BUCKET }} \
-            --confirm-changeset
+            --no-confirm-changeset
