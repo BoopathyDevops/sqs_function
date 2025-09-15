@@ -2,7 +2,9 @@ import json
 import os
 import boto3
 
-REGION = os.getenv("AWS_REGION", "us-east-2")
+# REGION = os.getenv("AWS_REGION", "us-east-2")
+REGION = boto3.session.Session().region_name
+
 RESPONSE_Q_URL = os.getenv("RESPONSE_Q_URL", "")
 
 sqs = boto3.client("sqs", region_name=REGION)

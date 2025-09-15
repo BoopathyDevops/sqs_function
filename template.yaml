@@ -65,7 +65,6 @@ Resources:
       Timeout: 30
       Environment:
         Variables:
-          AWS_REGION: !Ref "AWS::Region"
           REQUEST_Q_URL: !GetAtt RequestQueue.QueueUrl
           RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
       Events:

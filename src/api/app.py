@@ -6,7 +6,9 @@ from fastapi import FastAPI, HTTPException
 from mangum import Mangum
 from pydantic import BaseModel
 
-REGION = os.getenv("AWS_REGION", "us-east-2")
+# REGION = os.getenv("AWS_REGION", "us-east-2")
+REGION = boto3.session.Session().region_name
+
 REQUEST_Q_URL = os.getenv("REQUEST_Q_URL", "")
 RESPONSE_Q_URL = os.getenv("RESPONSE_Q_URL", "")
 
