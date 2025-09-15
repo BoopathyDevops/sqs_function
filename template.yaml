@@ -73,7 +73,10 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
-
+    Metadata:
+      BuildMethod: python3.9
+      BuildArgs:
+        - "--requirement ../requirements.txt"
   # Worker Lambda
   WorkerLambdaFunction:
     Type: AWS::Serverless::Function
@@ -94,6 +97,10 @@ Resources:
           Properties:
             Queue: !GetAtt RequestQueue.Arn
             BatchSize: 1
+    Metadata:
+      BuildMethod: python3.9
+      BuildArgs:
+        - "--requirement ../requirements.txt"
 
 Outputs:
   ApiEndpoint:
