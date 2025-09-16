@@ -56,7 +56,7 @@ Resources:
   ApiLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: houdini-api-lambda
+      FunctionName: houdini-api-lambda1
       Runtime: !Ref LambdaRuntime
       Handler: app.handler
       CodeUri: src/api/
@@ -81,7 +81,7 @@ Resources:
   WorkerLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: houdini-worker-lambda
+      FunctionName: houdini-worker-lambda1
       Runtime: !Ref LambdaRuntime
       Handler: handler.lambda_handler
       CodeUri: src/worker/
