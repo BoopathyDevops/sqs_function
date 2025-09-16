@@ -30,7 +30,7 @@ jobs:
       - name: SAM Deploy
         run: |
           sam deploy \
-            --stack-name houdini-serverless \
+            --stack-name houdini-serverlesses \
             --capabilities CAPABILITY_NAMED_IAM \
             --region us-east-2 \
             --no-fail-on-empty-changeset \
