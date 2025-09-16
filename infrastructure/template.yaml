@@ -56,7 +56,7 @@ Resources:
   ApiLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: houdini-api-lambda
+      FunctionName: houdini-api-lambdas
       Runtime: !Ref LambdaRuntime
       Handler: app.handler
       CodeUri: src/api/
@@ -76,12 +76,12 @@ Resources:
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
-        - "--requirement ../requirements.txt"
+        - "--requirement requirements.txt"
   # Worker Lambda
   WorkerLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: houdini-worker-lambda
+      FunctionName: houdini-worker-lambdas
       Runtime: !Ref LambdaRuntime
       Handler: handler.lambda_handler
       CodeUri: src/worker/
@@ -100,7 +100,7 @@ Resources:
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
-        - "--requirement ../requirements.txt"
+        - "--requirement requirements.txt"
 
 Outputs:
   ApiEndpoint:
