@@ -76,7 +76,7 @@ Resources:
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
-        - "--requirement requirements.txt"
+        - "--requirement ../requirements.txt"
   # Worker Lambda
   WorkerLambdaFunction:
     Type: AWS::Serverless::Function
@@ -100,7 +100,7 @@ Resources:
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
-        - "--requirement requirements.txt"
+        - "--requirement ../requirements.txt"
 
 Outputs:
   ApiEndpoint:

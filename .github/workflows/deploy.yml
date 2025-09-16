@@ -1,7 +1,7 @@
 name: Deploy Houdini Serverless
 on:
   push:
-    branches: [ main ]
+    branches: [ dev ]
 
 jobs:
   deploy:
