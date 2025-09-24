@@ -71,8 +71,11 @@ Resources:
       Timeout: 30
       Environment:
         Variables:
-          REQUEST_Q_URL: !GetAtt RequestQueue.QueueUrl
-          RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
+          REQUEST_Q_URL: !Ref RequestQueue
+          RESPONSE_Q_URL: !Ref ResponseQueue
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt DeadLetterQueue.Arn
       Events:
         RequestSQSEvent:
           Type: SQS
@@ -80,9 +83,6 @@ Resources:
             Queue: !GetAtt RequestQueue.Arn
             BatchSize: 1
             MaximumRetryAttempts: 2
-            DeadLetterQueue:
-              Type: SQS
-              TargetArn: !GetAtt DeadLetterQueue.Arn
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
@@ -90,8 +90,11 @@ Resources:
 
 Outputs:
   RequestQueueUrl:
+    Description: "URL of the request queue"
     Value: !Ref RequestQueue
   ResponseQueueUrl:
+    Description: "URL of the response queue"
     Value: !Ref ResponseQueue
   DLQUrl:
+    Description: "URL of the dead letter queue"
     Value: !Ref DeadLetterQueue
