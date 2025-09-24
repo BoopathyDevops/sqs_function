@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: Houdini Serverless stack - API Lambda + Worker Lambda + SQS + HTTP API
+Description: Houdini Serverless stack - Single Worker Lambda with SQS + DLQ
 
 Parameters:
   LambdaRuntime:
     Type: String
     Default: python3.9
-    Description: Python runtime for Lambdas
+    Description: Python runtime for Lambda
 
 Resources:
 
@@ -14,14 +14,19 @@ Resources:
   RequestQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: houdini-request-queues
+      QueueName: houdini-request-queue
 
   ResponseQueue:
     Type: AWS::SQS::Queue
     Properties:
-      QueueName: houdini-response-queues
+      QueueName: houdini-response-queue
 
-  # IAM Role for Lambdas
+  DeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: houdini-dlq
+
+  # IAM Role for Lambda
   LambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -51,37 +56,13 @@ Resources:
                 Resource: 
                   - !GetAtt RequestQueue.Arn
                   - !GetAtt ResponseQueue.Arn
+                  - !GetAtt DeadLetterQueue.Arn
 
-  # API Lambda
-  ApiLambdaFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: houdini-api-lambda1
-      Runtime: !Ref LambdaRuntime
-      Handler: app.handler
-      CodeUri: src/api/
-      Role: !GetAtt LambdaExecutionRole.Arn
-      MemorySize: 512
-      Timeout: 30
-      Environment:
-        Variables:
-          REQUEST_Q_URL: !GetAtt RequestQueue.QueueUrl
-          RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
-      Events:
-        HttpApi:
-          Type: HttpApi
-          Properties:
-            Path: /{proxy+}
-            Method: ANY
-    Metadata:
-      BuildMethod: python3.9
-      BuildArgs:
-        - "--requirement requirements.txt"
-  # Worker Lambda
+  # Single Worker Lambda
   WorkerLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: houdini-worker-lambda1
+      FunctionName: houdini-worker-lambda
       Runtime: !Ref LambdaRuntime
       Handler: handler.lambda_handler
       CodeUri: src/worker/
@@ -90,19 +71,27 @@ Resources:
       Timeout: 30
       Environment:
         Variables:
+          REQUEST_Q_URL: !GetAtt RequestQueue.QueueUrl
           RESPONSE_Q_URL: !GetAtt ResponseQueue.QueueUrl
       Events:
-        WorkerSQSEvent:
+        RequestSQSEvent:
           Type: SQS
           Properties:
             Queue: !GetAtt RequestQueue.Arn
             BatchSize: 1
+            MaximumRetryAttempts: 2
+            DeadLetterQueue:
+              Type: SQS
+              TargetArn: !GetAtt DeadLetterQueue.Arn
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
         - "--requirement requirements.txt"
 
 Outputs:
-  ApiEndpoint:
-    Description: "HTTP API endpoint"
-    Value: !Sub "https://${ApiLambdaFunction}.execute-api.${AWS::Region}.amazonaws.com/"
+  RequestQueueUrl:
+    Value: !Ref RequestQueue
+  ResponseQueueUrl:
+    Value: !Ref ResponseQueue
+  DLQUrl:
+    Value: !Ref DeadLetterQueue
