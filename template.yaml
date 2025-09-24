@@ -82,7 +82,6 @@ Resources:
           Properties:
             Queue: !GetAtt RequestQueue.Arn
             BatchSize: 1
-            MaximumRetryAttempts: 2
     Metadata:
       BuildMethod: python3.9
       BuildArgs:
